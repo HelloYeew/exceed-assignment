@@ -27,33 +27,50 @@ def get_reservation_by_name(name: str):
     return search_result
 
 
-@app.get("reservation/by-table/{table}")
+@app.get("/reservation/by-table/{table}")
 def get_reservation_by_table(table: int):
-    search_result = collection.find_one({"table_number": table}, {"_id": 0})
-    if search_result is None:
+    search_result = collection.find({"table_number": table}, {"_id": 0})
+    if search_result.count() == 0:
         raise HTTPException(status_code=404, detail="Reservation not found")
-    return search_result
+    else:
+        # for loop to get all the results in one json
+        result = []
+        for i in search_result:
+            result.append(i)
+        return result
 
 
 @app.post("/reservation")
 def reserve(reservation: Reservation):
-    p = jsonable_encoder(reservation)
-    collection.insert_one(p)
-    # return full details of the reservation
-    return {"status": "ok"}
+    # If the reservation on the same table and same time is already made, return error
+    search_result = collection.find_one({"time": reservation.time, "table_number": reservation.table_number}, {"_id": 0})
+    if search_result is not None:
+        raise HTTPException(status_code=409, detail="Reservation already exists")
+    else:
+        collection.insert_one(jsonable_encoder(reservation))
+        return {"status": "ok"}
 
 
 @app.put("/reservation/update/")
 def update_reservation(reservation: Reservation):
-    update_result = collection.update_one({"name": reservation.name}, {"$set": {"time": reservation.time}})
-    if update_result.modified_count == 0:
+    reservation_to_update = collection.find_one({"name": reservation.name, "table_number": reservation.table_number}, {"_id": 0})
+    if reservation_to_update is None:
         raise HTTPException(status_code=404, detail="Reservation not found")
-    return {"status": "ok"}
+    else:
+        # Find in database that is that table and that time is already taken
+        search_result = collection.find_one({"time": reservation.time, "table_number": reservation.table_number}, {"_id": 0})
+        if search_result is not None:
+            raise HTTPException(status_code=409, detail="Reservation already exists")
+        else:
+            collection.update_one({"name": reservation.name, "table_number": reservation.table_number}, {"$set": jsonable_encoder(reservation)})
+            return {"status": "update successfully"}
 
 
 @app.delete("/reservation/delete/{name}/{table_number}")
 def cancel_reservation(name: str, table_number: int):
-    delete_result = collection.delete_one({"name": name, "table_number": table_number})
-    if delete_result.deleted_count == 0:
+    reservation_to_delete = collection.find_one({"name": name, "table_number": table_number}, {"_id": 0})
+    if reservation_to_delete is None:
         raise HTTPException(status_code=404, detail="Reservation not found")
-    return {"status": "ok"}
+    else:
+        collection.delete_one({"name": name, "table_number": table_number})
+        return {"status": "delete successfully"}

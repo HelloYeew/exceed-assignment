@@ -42,11 +42,18 @@ def reserve(reservation: Reservation):
     # return full details of the reservation
     return {"status": "ok"}
 
+
 @app.put("/reservation/update/")
 def update_reservation(reservation: Reservation):
-    
+    update_result = collection.update_one({"name": reservation.name}, {"$set": {"time": reservation.time}})
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    return {"status": "ok"}
 
 
 @app.delete("/reservation/delete/{name}/{table_number}")
 def cancel_reservation(name: str, table_number: int):
-    pass
+    delete_result = collection.delete_one({"name": name, "table_number": table_number})
+    if delete_result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    return {"status": "ok"}

@@ -21,16 +21,21 @@ app = FastAPI()
 
 @app.get("/reservation/by-name/{name}")
 def get_reservation_by_name(name: str):
-    search_result = collection.find_one({"name": name}, {"_id": 0})
-    if search_result is None:
+    search_result = list(collection.find({"name": name}, {"_id": 0}))
+    if len(search_result) == 0:
         raise HTTPException(status_code=404, detail="Reservation not found")
-    return search_result
+    else:
+        # for loop to get all the results in one json
+        result = []
+        for i in search_result:
+            result.append(i)
+        return result
 
 
 @app.get("/reservation/by-table/{table}")
 def get_reservation_by_table(table: int):
-    search_result = collection.find({"table_number": table}, {"_id": 0})
-    if search_result.count() == 0:
+    search_result = list(collection.find({"table_number": table}, {"_id": 0}))
+    if len(search_result) == 0:
         raise HTTPException(status_code=404, detail="Reservation not found")
     else:
         # for loop to get all the results in one json
@@ -48,7 +53,7 @@ def reserve(reservation: Reservation):
         raise HTTPException(status_code=409, detail="Reservation already exists")
     else:
         collection.insert_one(jsonable_encoder(reservation))
-        return {"status": "ok"}
+        return {"status": "Reservation successfully"}
 
 
 @app.put("/reservation/update/")
@@ -73,4 +78,4 @@ def cancel_reservation(name: str, table_number: int):
         raise HTTPException(status_code=404, detail="Reservation not found")
     else:
         collection.delete_one({"name": name, "table_number": table_number})
-        return {"status": "delete successfully"}
+        return {"status": "Reservation cancelled"}

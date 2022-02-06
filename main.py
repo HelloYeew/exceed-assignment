@@ -52,8 +52,11 @@ def reserve(reservation: Reservation):
     if search_result is not None:
         raise HTTPException(status_code=409, detail="Reservation already exists")
     else:
-        collection.insert_one(jsonable_encoder(reservation))
-        return {"status": "Reservation successfully"}
+        if reservation.table_number > 12:
+            raise HTTPException(status_code=400, detail="Table number is not valid")
+        else:
+            collection.insert_one(jsonable_encoder(reservation))
+            return {"status": "ok"}
 
 
 @app.put("/reservation/update/")
